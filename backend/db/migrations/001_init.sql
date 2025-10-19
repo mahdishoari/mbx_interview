@@ -21,4 +21,8 @@ CREATE TABLE IF NOT EXISTS payments (
   status TEXT
 );
 
--- NOTE: Intentionally no indexes other than PKs to provoke slow plans.
+-- Added indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_orders_user_created ON orders (user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_payments_order ON payments (order_id);
+CREATE INDEX IF NOT EXISTS idx_items_order ON order_items (order_id);
+

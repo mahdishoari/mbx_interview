@@ -20,6 +20,12 @@ if ($path === '/api/orders' && $method === 'GET') {
     exit;
 }
 
+if ($path === '/api/orders_fast' && $method === 'GET') {
+    require __DIR__ . '/../src/orders_optimized.php';
+    exit;
+}
+
+
 // 404
 http_response_code(404);
 echo json_encode(['error' => 'Not Found', 'path' => $path]);
