@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-// Deliberately simplistic & flawed (candidate should improve UX/state)
+
 const userId = ref(1)
 const page = ref(1)
 const per = ref(20)
@@ -9,17 +9,32 @@ const data = ref([])
 const count = ref(0)
 const error = ref('')
 
+let abortController = null
+
 async function fetchOrders() {
+  // لغو درخواست قبلی
+  if (abortController) abortController.abort()
+  abortController = new AbortController()
+
   loading.value = true
   error.value = ''
+
   try {
-    const q = new URLSearchParams({ user_id: String(userId.value), page: String(page.value), per_page: String(per.value) })
-    const res = await fetch(`http://127.0.0.1:8080/api/orders?${q.toString()}`)
+    const q = new URLSearchParams({
+      user_id: String(userId.value),
+      page: String(page.value),
+      per_page: String(per.value)
+    })
+    const res = await fetch(`http://127.0.0.1:8080/api/orders?${q.toString()}`, {
+      signal: abortController.signal
+    })
     const json = await res.json()
     data.value = json.data
     count.value = json.count
   } catch (e) {
-    error.value = String(e)
+    if (e.name !== 'AbortError') {
+      error.value = String(e)
+    }
   } finally {
     loading.value = false
   }
@@ -38,22 +53,26 @@ watch([userId, page, per], fetchOrders)
       <button @click="fetchOrders">Reload</button>
     </div>
 
-    <div v-if="loading">Loading...</div>
+    <div v-if="loading">
+      <p>Loading orders...</p>
+    </div>
+
     <div v-else-if="error">Error: {{ error }}</div>
+
     <div v-else>
-      <div v-if="count === 0">No orders.</div>
-      <table border="1" cellspacing="0" cellpadding="6">
+      <div v-if="count === 0">No orders found.</div>
+      <table v-else border="1" cellspacing="0" cellpadding="6">
         <thead>
-          <tr><th>ID</th><th>Total</th><th>Created At</th><th>Payment</th><th>Items</th></tr>
+        <tr><th>ID</th><th>Total</th><th>Created At</th><th>Payment</th><th>Items</th></tr>
         </thead>
         <tbody>
-          <tr v-for="r in data" :key="r.id">
-            <td>{{ r.id }}</td>
-            <td>{{ r.total }}</td>
-            <td>{{ r.created_at }}</td>
-            <td>{{ r.payment?.method }} / {{ r.payment?.status }}</td>
-            <td>{{ r.items_count }}</td>
-          </tr>
+        <tr v-for="r in data" :key="r.id">
+          <td>{{ r.id }}</td>
+          <td>{{ r.total }}</td>
+          <td>{{ r.created_at }}</td>
+          <td>{{ r.payment?.method }} / {{ r.payment?.status }}</td>
+          <td>{{ r.items_count }}</td>
+        </tr>
         </tbody>
       </table>
     </div>
